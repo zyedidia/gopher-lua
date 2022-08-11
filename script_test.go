@@ -2,7 +2,7 @@ package lua
 
 import (
 	"fmt"
-	"github.com/yuin/gopher-lua/parse"
+	"github.com/zyedidia/gopher-lua/parse"
 	"os"
 	"runtime"
 	"sync/atomic"

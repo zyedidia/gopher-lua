@@ -4,16 +4,18 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/yuin/gopher-lua/ast"
 	"io"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/zyedidia/gopher-lua/ast"
 )
 
 const EOF = -1
-const whitespace1 = 1<<'\t' | 1<<' '
-const whitespace2 = 1<<'\t' | 1<<'\n' | 1<<'\r' | 1<<' '
+const whitespace1 int64 = 1<<'\t' | 1<<' '
+const whitespace2 int64 = 1<<'\t' | 1<<'\n' | 1<<'\r' | 1<<' '
+const whitespace3 int64 = 1<<'\n' | 1<<'\r'
 
 type Error struct {
 	Pos     ast.Position
@@ -105,11 +107,13 @@ func (sc *Scanner) Peek() int {
 	return ch
 }
 
-func (sc *Scanner) skipWhiteSpace(whitespace int64) int {
+func (sc *Scanner) skipWhiteSpace(whitespace int64) (int, int) {
 	ch := sc.Next()
+	skipped := 0
 	for ; whitespace&(1<<uint(ch)) != 0; ch = sc.Next() {
+		skipped++
 	}
-	return ch
+	return ch, skipped
 }
 
 func (sc *Scanner) skipComments(ch int) error {
@@ -145,6 +149,26 @@ func (sc *Scanner) scanDecimal(ch int, buf *bytes.Buffer) error {
 	writeChar(buf, ch)
 	for isDecimal(sc.Peek()) {
 		writeChar(buf, sc.Next())
+	}
+	return nil
+}
+
+func (sc *Scanner) scanRule(inRule int, buf *bytes.Buffer) error {
+	for {
+		for ch := sc.Next(); ch != '\n'; ch = sc.Next() {
+			buf.WriteByte(byte(ch))
+		}
+		buf.WriteByte('\n')
+		n := 0
+		ch := sc.Peek()
+		for ; whitespace1&(1<<uint(ch)) != 0; ch = sc.Peek() {
+			sc.Next()
+			n++
+			buf.WriteByte(byte(ch))
+		}
+		if n <= inRule {
+			break
+		}
 	}
 	return nil
 }
@@ -294,10 +318,12 @@ redo:
 	tok := ast.Token{}
 	newline := false
 
-	ch := sc.skipWhiteSpace(whitespace1)
+	ch, _ := sc.skipWhiteSpace(whitespace1)
 	if ch == '\n' || ch == '\r' {
 		newline = true
-		ch = sc.skipWhiteSpace(whitespace2)
+		lexer.whitespace = 0
+		ch, lexer.whitespace = sc.skipWhiteSpace(whitespace2)
+		lexer.start = true
 	}
 
 	if ch == '(' && lexer.PrevTokenType == ')' {
@@ -311,6 +337,12 @@ redo:
 	tok.Pos = sc.Pos
 
 	switch {
+	case lexer.inRule >= 0:
+		tok.Type = TRule
+		buf.WriteByte(byte(ch))
+		err = sc.scanRule(lexer.inRule, buf)
+		tok.Str = buf.String()
+		lexer.inRule = -1
 	case isIdent(ch, 0):
 		tok.Type = TIdent
 		err = sc.scanIdent(ch, buf)
@@ -408,7 +440,12 @@ redo:
 				tok.Type = '.'
 			}
 			tok.Str = buf.String()
-		case '+', '*', '/', '%', '^', '#', '(', ')', '{', '}', ']', ';', ':', ',':
+		case '$':
+			if lexer.start {
+				lexer.inRule = lexer.whitespace
+			}
+			fallthrough
+		case '+', '*', '/', '%', '^', '(', ')', '{', '}', ']', ';', ',', ':', '#':
 			tok.Type = ch
 			tok.Str = string(rune(ch))
 		default:
@@ -419,6 +456,11 @@ redo:
 	}
 
 finally:
+	if len(tok.Str) >= 1 {
+		lexer.start = tok.Str[len(tok.Str)-1] == '\n'
+	} else {
+		lexer.start = false
+	}
 	tok.Name = TokenName(int(tok.Type))
 	return tok, err
 }
@@ -431,6 +473,9 @@ type Lexer struct {
 	PNewLine      bool
 	Token         ast.Token
 	PrevTokenType int
+	inRule        int
+	whitespace    int
+	start         bool
 }
 
 func (lx *Lexer) Lex(lval *yySymType) int {
@@ -456,7 +501,7 @@ func (lx *Lexer) TokenError(tok ast.Token, message string) {
 }
 
 func Parse(reader io.Reader, name string) (chunk []ast.Stmt, err error) {
-	lexer := &Lexer{NewScanner(reader, name), nil, false, ast.Token{Str: ""}, TNil}
+	lexer := &Lexer{NewScanner(reader, name), nil, false, ast.Token{Str: ""}, TNil, -1, 0, true}
 	chunk = nil
 	defer func() {
 		if e := recover(); e != nil {
