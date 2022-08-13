@@ -985,6 +985,10 @@ func compileExpr(context *funcContext, reg int, expr ast.Expr, ec *expcontext) i
 	case *ast.StringExpr:
 		code.AddABx(OP_LOADK, sreg, context.ConstIndex(LString(ex.Value)), sline(ex))
 		return sused
+	case *ast.BareStringExpr:
+		// return compileFuncCallExpr(context, reg, ex, ec)
+		// code.AddABx(OP_LOADK, sreg, context.ConstIndex(LString(ex.Value)), sline(ex))
+		// return sused
 	case *ast.NumberExpr:
 		num, err := parseNumber(ex.Value)
 		if err != nil {
