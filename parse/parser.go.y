@@ -55,7 +55,7 @@ import (
 %token<token> TAnd TBreak TDo TElse TElseIf TEnd TFalse TFor TFunction TIf TIn TLocal TNil TNot TOr TReturn TRepeat TThen TTrue TUntil TWhile 
 
 /* Literals */
-%token<token> TRule TBareEq TEqeq TNeq TLte TGte T2Comma T3Comma TIdent TNumber TString '{' '('
+%token<token> TRule TBareEq TEqeq TNeq TLte TGte T2Comma T3Comma TIdent TNumber TString TBareString '{' '('
 
 /* Operators */
 %left TOr
@@ -387,7 +387,11 @@ string:
         TString {
             $$ = &ast.StringExpr{Value: $1.Str}
             $$.SetLine($1.Pos.Line)
-        } 
+        } |
+        TBareString {
+            $$ = &ast.BareStringExpr{Value: $1.Str}
+            $$.SetLine($1.Pos.Line)
+        }
 
 prefixexp:
         var {

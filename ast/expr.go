@@ -48,6 +48,12 @@ type StringExpr struct {
 	Value string
 }
 
+type BareStringExpr struct {
+	ConstExprBase
+
+	Value string
+}
+
 /* ConstExprs }}} */
 
 type Comma3Expr struct {
