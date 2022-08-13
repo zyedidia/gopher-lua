@@ -355,7 +355,7 @@ redo:
 		tok.Type = TString
 		buf.WriteByte(byte(ch))
 		err = sc.scanBareString(buf)
-		tok.Str = buf.String()
+		tok.Str = strings.TrimSpace(buf.String())
 		lexer.bareStr = false
 	case isIdent(ch, 0):
 		tok.Type = TIdent
@@ -526,7 +526,7 @@ func (lx *Lexer) TokenError(tok ast.Token, message string) {
 }
 
 func Parse(reader io.Reader, name string) (chunk []ast.Stmt, err error) {
-	lexer := &Lexer{NewScanner(reader, name), nil, false, ast.Token{Str: ""}, TNil, -1, 0, true}
+	lexer := &Lexer{NewScanner(reader, name), nil, false, ast.Token{Str: ""}, TNil, -1, 0, true, false}
 	chunk = nil
 	defer func() {
 		if e := recover(); e != nil {
