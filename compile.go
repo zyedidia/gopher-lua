@@ -997,9 +997,14 @@ func compileExpr(context *funcContext, reg int, expr ast.Expr, ec *expcontext) i
 		code.AddABx(OP_LOADK, sreg, context.ConstIndex(LString(ex.Value)), sline(ex))
 		return sused
 	case *ast.BareStringExpr:
-		// return compileFuncCallExpr(context, reg, ex, ec)
-		// code.AddABx(OP_LOADK, sreg, context.ConstIndex(LString(ex.Value)), sline(ex))
-		// return sused
+		fnex := &ast.FuncCallExpr{
+			Func: &ast.IdentExpr{Value: "_format"},
+			Args: []ast.Expr{
+				&ast.StringExpr{Value: ex.Value},
+			},
+		}
+		fnex.SetLine(ex.Line())
+		return compileFuncCallExpr(context, reg, fnex, ec)
 	case *ast.NumberExpr:
 		num, err := parseNumber(ex.Value)
 		if err != nil {
