@@ -173,6 +173,14 @@ func (sc *Scanner) scanRule(inRule int, buf *bytes.Buffer) error {
 	return nil
 }
 
+func (sc *Scanner) scanBareString(buf *bytes.Buffer) error {
+	for ch := sc.Peek(); ch != '\n'; ch = sc.Peek() {
+		ch = sc.Next()
+		buf.WriteByte(byte(ch))
+	}
+	return nil
+}
+
 func (sc *Scanner) scanNumber(ch int, buf *bytes.Buffer) error {
 	if ch == '0' { // octal
 		if sc.Peek() == 'x' || sc.Peek() == 'X' {
@@ -343,6 +351,12 @@ redo:
 		err = sc.scanRule(lexer.inRule, buf)
 		tok.Str = buf.String()
 		lexer.inRule = -1
+	case lexer.bareStr:
+		tok.Type = TString
+		buf.WriteByte(byte(ch))
+		err = sc.scanBareString(buf)
+		tok.Str = buf.String()
+		lexer.bareStr = false
 	case isIdent(ch, 0):
 		tok.Type = TIdent
 		err = sc.scanIdent(ch, buf)
@@ -440,12 +454,22 @@ redo:
 				tok.Type = '.'
 			}
 			tok.Str = buf.String()
+		case ':':
+			if sc.Peek() == '=' {
+				tok.Type = '='
+				tok.Str = ":="
+				sc.Next()
+				lexer.bareStr = true
+			} else {
+				tok.Type = ch
+				tok.Str = string(rune(ch))
+			}
 		case '$':
 			if lexer.start {
 				lexer.inRule = lexer.whitespace
 			}
 			fallthrough
-		case '+', '*', '/', '%', '^', '(', ')', '{', '}', ']', ';', ',', ':', '#':
+		case '+', '*', '/', '%', '^', '(', ')', '{', '}', ']', ';', ',', '#':
 			tok.Type = ch
 			tok.Str = string(rune(ch))
 		default:
@@ -476,6 +500,7 @@ type Lexer struct {
 	inRule        int
 	whitespace    int
 	start         bool
+	bareStr       bool
 }
 
 func (lx *Lexer) Lex(lval *yySymType) int {
