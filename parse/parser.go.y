@@ -55,7 +55,7 @@ import (
 %token<token> TAnd TBreak TDo TElse TElseIf TEnd TFalse TFor TFunction TIf TIn TLocal TNil TNot TOr TReturn TRepeat TThen TTrue TUntil TWhile 
 
 /* Literals */
-%token<token> TRule TEqeq TNeq TLte TGte T2Comma T3Comma TIdent TNumber TString '{' '('
+%token<token> TRule TBareEq TEqeq TNeq TLte TGte T2Comma T3Comma TIdent TNumber TString '{' '('
 
 /* Operators */
 %left TOr
