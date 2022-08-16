@@ -361,7 +361,7 @@ redo:
 		tok.Str = buf.String()
 		lexer.inRule = -1
 	case lexer.bareStr:
-		tok.Type = TString
+		tok.Type = TBareString
 		buf.WriteByte(byte(ch))
 		err = sc.scanBareString(buf)
 		tok.Str = strings.TrimSpace(buf.String())
