@@ -326,6 +326,15 @@ redo:
 	tok := ast.Token{}
 	newline := false
 
+	if lexer.semicolon {
+		tok.Pos = sc.Pos
+		tok.Str = ";"
+		tok.Type = ';'
+		tok.Name = TokenName(int(tok.Type))
+		lexer.semicolon = false
+		return tok, nil
+	}
+
 	ch, _ := sc.skipWhiteSpace(whitespace1)
 	if ch == '\n' || ch == '\r' {
 		newline = true
@@ -352,11 +361,12 @@ redo:
 		tok.Str = buf.String()
 		lexer.inRule = -1
 	case lexer.bareStr:
-		tok.Type = TBareString
+		tok.Type = TString
 		buf.WriteByte(byte(ch))
 		err = sc.scanBareString(buf)
 		tok.Str = strings.TrimSpace(buf.String())
 		lexer.bareStr = false
+		lexer.semicolon = true
 	case isIdent(ch, 0):
 		tok.Type = TIdent
 		err = sc.scanIdent(ch, buf)
@@ -501,6 +511,7 @@ type Lexer struct {
 	whitespace    int
 	start         bool
 	bareStr       bool
+	semicolon     bool
 }
 
 func (lx *Lexer) Lex(lval *yySymType) int {
@@ -526,7 +537,7 @@ func (lx *Lexer) TokenError(tok ast.Token, message string) {
 }
 
 func Parse(reader io.Reader, name string) (chunk []ast.Stmt, err error) {
-	lexer := &Lexer{NewScanner(reader, name), nil, false, ast.Token{Str: ""}, TNil, -1, 0, true, false}
+	lexer := &Lexer{NewScanner(reader, name), nil, false, ast.Token{Str: ""}, TNil, -1, 0, true, false, false}
 	chunk = nil
 	defer func() {
 		if e := recover(); e != nil {
