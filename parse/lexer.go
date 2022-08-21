@@ -360,6 +360,7 @@ redo:
 		err = sc.scanRule(lexer.inRule, buf)
 		tok.Str = buf.String()
 		lexer.inRule = -1
+		lexer.semicolon = true
 	case lexer.bareStr:
 		tok.Type = TBareString
 		buf.WriteByte(byte(ch))
