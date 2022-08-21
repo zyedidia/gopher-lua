@@ -106,10 +106,6 @@ block:
         }
 
 stat:
-        '$' TRule {
-            $$ = &ast.RuleStmt{Contents: $2.Str}
-            $$.SetLine($2.Pos.Line)
-        } |
         varlist '=' exprlist {
             $$ = &ast.AssignStmt{Lhs: $1, Rhs: $3}
             $$.SetLine($1[0].Line())
@@ -278,6 +274,10 @@ exprlist:
         }
 
 expr:
+        '$' TRule {
+            $$ = &ast.RuleExpr{Contents: $2.Str}
+            $$.SetLine($2.Pos.Line)
+        } |
         TNil {
             $$ = &ast.NilExpr{}
             $$.SetLine($1.Pos.Line)

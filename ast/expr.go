@@ -61,6 +61,12 @@ type Comma3Expr struct {
 	AdjustRet bool
 }
 
+type RuleExpr struct {
+	ExprBase
+
+	Contents string
+}
+
 type IdentExpr struct {
 	ExprBase
 
