@@ -107,13 +107,11 @@ func (sc *Scanner) Peek() int {
 	return ch
 }
 
-func (sc *Scanner) skipWhiteSpace(whitespace int64) (int, int) {
+func (sc *Scanner) skipWhiteSpace(whitespace int64) int {
 	ch := sc.Next()
-	skipped := 0
 	for ; whitespace&(1<<uint(ch)) != 0; ch = sc.Next() {
-		skipped++
 	}
-	return ch, skipped
+	return ch
 }
 
 func (sc *Scanner) skipComments(ch int) error {
@@ -335,11 +333,10 @@ redo:
 		return tok, nil
 	}
 
-	ch, _ := sc.skipWhiteSpace(whitespace1)
+	ch := sc.skipWhiteSpace(whitespace1)
 	if ch == '\n' || ch == '\r' {
 		newline = true
-		lexer.whitespace = 0
-		ch, lexer.whitespace = sc.skipWhiteSpace(whitespace2)
+		ch = sc.skipWhiteSpace(whitespace2)
 		lexer.start = true
 	}
 
@@ -476,9 +473,7 @@ redo:
 				tok.Str = string(rune(ch))
 			}
 		case '$':
-			if lexer.start {
-				lexer.inRule = lexer.whitespace
-			}
+			lexer.inRule = lexer.scanner.Pos.Column - 1
 			fallthrough
 		case '+', '*', '/', '%', '^', '(', ')', '{', '}', ']', ';', ',', '#':
 			tok.Type = ch
@@ -509,7 +504,6 @@ type Lexer struct {
 	Token         ast.Token
 	PrevTokenType int
 	inRule        int
-	whitespace    int
 	start         bool
 	bareStr       bool
 	semicolon     bool
@@ -538,7 +532,7 @@ func (lx *Lexer) TokenError(tok ast.Token, message string) {
 }
 
 func Parse(reader io.Reader, name string) (chunk []ast.Stmt, err error) {
-	lexer := &Lexer{NewScanner(reader, name), nil, false, ast.Token{Str: ""}, TNil, -1, 0, true, false, false}
+	lexer := &Lexer{NewScanner(reader, name), nil, false, ast.Token{Str: ""}, TNil, -1, true, false, false}
 	chunk = nil
 	defer func() {
 		if e := recover(); e != nil {
