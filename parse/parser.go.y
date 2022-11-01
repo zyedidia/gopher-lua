@@ -2,7 +2,7 @@
 package parse
 
 import (
-  "github.com/yuin/gopher-lua/ast"
+  "github.com/zyedidia/gopher-lua/ast"
 )
 %}
 %type<stmts> chunk
@@ -55,7 +55,7 @@ import (
 %token<token> TAnd TBreak TDo TElse TElseIf TEnd TFalse TFor TFunction TIf TIn TLocal TNil TNot TOr TReturn TRepeat TThen TTrue TUntil TWhile 
 
 /* Literals */
-%token<token> TEqeq TNeq TLte TGte T2Comma T3Comma TIdent TNumber TString '{' '('
+%token<token> TRule TEqeq TNeq TLte TGte T2Comma T3Comma TIdent TNumber TString '{' '('
 
 /* Operators */
 %left TOr
@@ -106,6 +106,10 @@ block:
         }
 
 stat:
+        '$' TRule {
+            $$ = &ast.RuleStmt{Contents: $2.Str}
+            $$.SetLine($2.Pos.Line)
+        } |
         varlist '=' exprlist {
             $$ = &ast.AssignStmt{Lhs: $1, Rhs: $3}
             $$.SetLine($1[0].Line())
