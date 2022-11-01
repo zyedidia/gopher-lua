@@ -2,9 +2,10 @@ package lua
 
 import (
 	"fmt"
-	"github.com/yuin/gopher-lua/ast"
 	"math"
 	"reflect"
+
+	"github.com/yuin/gopher-lua/ast"
 )
 
 /* internal constants & structs  {{{ */
@@ -276,16 +277,26 @@ type varNamePoolValue struct {
 }
 
 type varNamePool struct {
-	names  []string
-	offset int
+	names       []string
+	globalIndex []int
+	offset      int
 }
 
 func newVarNamePool(offset int) *varNamePool {
-	return &varNamePool{make([]string, 0, 16), offset}
+	return &varNamePool{make([]string, 0, 16), make([]int, 0, 16), offset}
 }
 
 func (vp *varNamePool) Names() []string {
 	return vp.names
+}
+
+func (vp *varNamePool) ListGlobalIndex() []varNamePoolValue {
+	result := make([]varNamePoolValue, len(vp.names), len(vp.names))
+	for i, name := range vp.names {
+		result[i].Index = vp.globalIndex[i]
+		result[i].Name = name
+	}
+	return result
 }
 
 func (vp *varNamePool) List() []varNamePoolValue {
@@ -313,13 +324,14 @@ func (vp *varNamePool) Find(name string) int {
 func (vp *varNamePool) RegisterUnique(name string) int {
 	index := vp.Find(name)
 	if index < 0 {
-		return vp.Register(name)
+		return vp.Register(name, -1)
 	}
 	return index
 }
 
-func (vp *varNamePool) Register(name string) int {
+func (vp *varNamePool) Register(name string, globalIndex int) int {
 	vp.names = append(vp.names, name)
+	vp.globalIndex = append(vp.globalIndex, globalIndex)
 	return len(vp.names) - 1 + vp.offset
 }
 
@@ -402,8 +414,8 @@ func (fc *funcContext) ConstIndex(value LValue) int {
 }
 
 func (fc *funcContext) RegisterLocalVar(name string) int {
-	ret := fc.Block.LocalVars.Register(name)
-	fc.Proto.DbgLocals = append(fc.Proto.DbgLocals, &DbgLocalInfo{Name: name, StartPc: fc.Code.LastPC() + 1})
+	ret := fc.Block.LocalVars.Register(name, len(fc.Proto.DbgLocals))
+	fc.Proto.DbgLocals = append(fc.Proto.DbgLocals, &DbgLocalInfo{Name: name, StartPc: fc.Code.pc})
 	fc.SetRegTop(fc.RegTop() + 1)
 	return ret
 }
@@ -453,7 +465,7 @@ func (fc *funcContext) LeaveBlock() int {
 }
 
 func (fc *funcContext) EndScope() {
-	for _, vr := range fc.Block.LocalVars.List() {
+	for _, vr := range fc.Block.LocalVars.ListGlobalIndex() {
 		fc.Proto.DbgLocals[vr.Index].EndPc = fc.Code.LastPC()
 	}
 }
