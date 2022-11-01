@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strconv"
 
-	"github.com/yuin/gopher-lua/ast"
+	"github.com/zyedidia/gopher-lua/ast"
 )
 
 /* internal constants & structs  {{{ */
@@ -505,6 +506,17 @@ func compileBlock(context *funcContext, chunk []ast.Stmt) { // {{{
 
 func compileStmt(context *funcContext, stmt ast.Stmt) { // {{{
 	switch st := stmt.(type) {
+	case *ast.RuleStmt:
+		expr := &ast.FuncCallExpr{
+			Func: &ast.IdentExpr{Value: "_rule"},
+			Args: []ast.Expr{
+				&ast.StringExpr{Value: st.Contents},
+				&ast.StringExpr{Value: context.Proto.SourceName},
+				&ast.NumberExpr{Value: strconv.Itoa(st.Line())},
+			},
+		}
+		expr.SetLine(st.Line())
+		compileFuncCallExpr(context, context.RegTop(), expr, ecnone(-1))
 	case *ast.AssignStmt:
 		compileAssignStmt(context, st)
 	case *ast.LocalAssignStmt:

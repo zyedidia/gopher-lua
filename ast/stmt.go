@@ -18,6 +18,12 @@ type AssignStmt struct {
 	Rhs []Expr
 }
 
+type RuleStmt struct {
+	StmtBase
+
+	Contents string
+}
+
 type LocalAssignStmt struct {
 	StmtBase
 
