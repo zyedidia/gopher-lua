@@ -403,7 +403,7 @@ func (fc *funcContext) ConstIndex(value LValue) int {
 
 func (fc *funcContext) RegisterLocalVar(name string) int {
 	ret := fc.Block.LocalVars.Register(name)
-	fc.Proto.DbgLocals = append(fc.Proto.DbgLocals, &DbgLocalInfo{Name: name, StartPc: fc.Code.LastPC() + 1})
+	fc.Proto.dbgLocalsTmp = append(fc.Proto.dbgLocalsTmp, &DbgLocalInfo{Name: name, StartPc: fc.Code.LastPC() + 1})
 	fc.SetRegTop(fc.RegTop() + 1)
 	return ret
 }
@@ -433,6 +433,10 @@ func (fc *funcContext) LocalVars() []varNamePoolValue {
 func (fc *funcContext) EnterBlock(blabel int, pos ast.PositionHolder) {
 	fc.Block = newCodeBlock(newVarNamePool(fc.RegTop()), blabel, fc.Block, pos)
 	fc.Blocks = append(fc.Blocks, fc.Block)
+	fc.Proto.blockPcs.Push(fc.Code.LastPC())
+	blockLocals := make([]*DbgLocalInfo, len(fc.Proto.dbgLocalsTmp))
+	copy(blockLocals, fc.Proto.dbgLocalsTmp)
+	fc.Proto.dbgLocals.Push(blockLocals)
 }
 
 func (fc *funcContext) CloseUpvalues() int {
@@ -453,9 +457,15 @@ func (fc *funcContext) LeaveBlock() int {
 }
 
 func (fc *funcContext) EndScope() {
-	for _, vr := range fc.Block.LocalVars.List() {
-		fc.Proto.DbgLocals[vr.Index].EndPc = fc.Code.LastPC()
+	block := DbgBlock{
+		StartPc: fc.Proto.blockPcs.Pop(),
+		EndPc:   fc.Code.LastPC(),
 	}
+	for _, vr := range fc.Block.LocalVars.List() {
+		fc.Proto.dbgLocalsTmp[vr.Index].EndPc = fc.Code.LastPC()
+	}
+	fc.Proto.DbgLocals[block] = fc.Proto.dbgLocalsTmp
+	fc.Proto.dbgLocalsTmp = fc.Proto.dbgLocals.Pop()
 }
 
 func (fc *funcContext) SetRegTop(top int) {

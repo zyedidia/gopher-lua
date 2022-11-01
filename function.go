@@ -2,7 +2,10 @@ package lua
 
 import (
 	"fmt"
+	"math"
 	"strings"
+
+	"github.com/zyedidia/generic/stack"
 )
 
 const (
@@ -13,6 +16,11 @@ const (
 
 type DbgLocalInfo struct {
 	Name    string
+	StartPc int
+	EndPc   int
+}
+
+type DbgBlock struct {
 	StartPc int
 	EndPc   int
 }
@@ -35,7 +43,10 @@ type FunctionProto struct {
 	FunctionPrototypes []*FunctionProto
 
 	DbgSourcePositions []int
-	DbgLocals          []*DbgLocalInfo
+	DbgLocals          map[DbgBlock][]*DbgLocalInfo
+	blockPcs           *stack.Stack[int]
+	dbgLocals          *stack.Stack[[]*DbgLocalInfo]
+	dbgLocalsTmp       []*DbgLocalInfo
 	DbgCalls           []DbgCall
 	DbgUpvalues        []string
 
@@ -101,7 +112,9 @@ func newFunctionProto(name string) *FunctionProto {
 		FunctionPrototypes: make([]*FunctionProto, 0, 16),
 
 		DbgSourcePositions: make([]int, 0, 128),
-		DbgLocals:          make([]*DbgLocalInfo, 0, 16),
+		DbgLocals:          make(map[DbgBlock][]*DbgLocalInfo),
+		blockPcs:           stack.New[int](),
+		dbgLocals:          stack.New[[]*DbgLocalInfo](),
 		DbgCalls:           make([]DbgCall, 0, 128),
 		DbgUpvalues:        make([]string, 0, 16),
 
@@ -120,8 +133,10 @@ func (fp *FunctionProto) str(level int, count int) string {
 		indent, count, level))
 	buf = append(buf, fmt.Sprintf("%v; %v upvalues, %v params, %v stacks\n",
 		indent, fp.NumUpvalues, fp.NumParameters, fp.NumUsedRegisters))
-	for reg, linfo := range fp.DbgLocals {
-		buf = append(buf, fmt.Sprintf("%v.local %v ; %v\n", indent, linfo.Name, reg))
+	for _, locals := range fp.DbgLocals {
+		for reg, linfo := range locals {
+			buf = append(buf, fmt.Sprintf("%v.local %v ; %v\n", indent, linfo.Name, reg))
+		}
 	}
 	for reg, upvalue := range fp.DbgUpvalues {
 		buf = append(buf, fmt.Sprintf("%v.upvalue %v ; %v\n", indent, upvalue, reg))
@@ -179,14 +194,24 @@ func (fn *LFunction) LocalName(regno, pc int) (string, bool) {
 		return "", false
 	}
 	p := fn.Proto
-	for i := 0; i < len(p.DbgLocals) && p.DbgLocals[i].StartPc < pc; i++ {
-		if pc < p.DbgLocals[i].EndPc {
+
+	var blocals []*DbgLocalInfo
+	minblock := math.MaxInt
+	for block, locals := range p.DbgLocals {
+		if block.StartPc < pc && pc < block.EndPc && block.EndPc-block.StartPc < minblock {
+			blocals = locals
+			minblock = block.EndPc - block.StartPc
+		}
+	}
+	for i := 0; i < len(blocals) && blocals[i].StartPc < pc; i++ {
+		if pc < blocals[i].EndPc {
 			regno--
 			if regno == 0 {
-				return p.DbgLocals[i].Name, true
+				return blocals[i].Name, true
 			}
 		}
 	}
+
 	return "", false
 }
 

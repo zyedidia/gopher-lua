@@ -82,5 +82,29 @@ local ok, msg = pcall(function()
 end)
 assert(not ok and string.find(msg, "level out of range"))
 
+do
+    local foo = 1
+end
+local bar = 2
+
+function locals()
+  local variables = {}
+  local idx = 1
+  while true do
+    local ln, lv = debug.getlocal(2, idx)
+    if ln ~= nil then
+      variables[ln] = lv
+    else
+      break
+    end
+    idx = 1 + idx
+  end
+  return variables
+end
+
+local vars = locals()
+
+assert(vars["bar"] == 2)
+assert(vars["foo"] == nil)
+
 assert(debug.getinfo(100) == nil)
-assert(debug.getinfo(1, "a") == nil)
