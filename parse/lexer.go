@@ -153,7 +153,7 @@ func (sc *Scanner) scanDecimal(ch int, buf *bytes.Buffer) error {
 
 func (sc *Scanner) scanRule(inRule int, buf *bytes.Buffer) error {
 	for {
-		for ch := sc.Next(); ch != '\n'; ch = sc.Next() {
+		for ch := sc.Next(); ch != '\n' && ch != EOF; ch = sc.Next() {
 			buf.WriteByte(byte(ch))
 		}
 		buf.WriteByte('\n')
@@ -172,7 +172,7 @@ func (sc *Scanner) scanRule(inRule int, buf *bytes.Buffer) error {
 }
 
 func (sc *Scanner) scanBareString(buf *bytes.Buffer) error {
-	for ch := sc.Peek(); ch != '\n'; ch = sc.Peek() {
+	for ch := sc.Peek(); ch != '\n' && ch != EOF; ch = sc.Peek() {
 		ch = sc.Next()
 		buf.WriteByte(byte(ch))
 	}
