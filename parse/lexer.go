@@ -151,15 +151,18 @@ func (sc *Scanner) scanDecimal(ch int, buf *bytes.Buffer) error {
 	return nil
 }
 
-func (sc *Scanner) scanRule(inRule int, buf *bytes.Buffer) error {
+func (sc *Scanner) scanRule(inRule int, fullbuf *bytes.Buffer) error {
+	buf := &bytes.Buffer{}
 	for {
+		ch := sc.skipWhiteSpace(whitespace1)
+		buf.WriteByte(byte(ch))
 		for ch := sc.Next(); ch != '\n' && ch != EOF; ch = sc.Next() {
 			buf.WriteByte(byte(ch))
 		}
 		buf.WriteByte('\n')
 		n := 0
 		// consume spaces until we reach content
-		ch := sc.Peek()
+		ch = sc.Peek()
 		for ; whitespace2&(1<<uint(ch)) != 0; ch = sc.Peek() {
 			sc.Next()
 			if whitespace1&(1<<uint(ch)) != 0 {
@@ -171,10 +174,17 @@ func (sc *Scanner) scanRule(inRule int, buf *bytes.Buffer) error {
 			}
 			buf.WriteByte(byte(ch))
 		}
-		if n <= inRule {
+		if n <= inRule && ch == '$' {
+			fullbuf.Write(bytes.TrimSpace(buf.Bytes()))
+			fullbuf.WriteByte('\n')
+			buf.Reset()
+			sc.Next()
+			inRule = n
+		} else if n <= inRule {
 			break
 		}
 	}
+	fullbuf.Write(bytes.TrimSpace(buf.Bytes()))
 	return nil
 }
 
