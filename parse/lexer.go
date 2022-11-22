@@ -158,10 +158,17 @@ func (sc *Scanner) scanRule(inRule int, buf *bytes.Buffer) error {
 		}
 		buf.WriteByte('\n')
 		n := 0
+		// consume spaces until we reach content
 		ch := sc.Peek()
-		for ; whitespace1&(1<<uint(ch)) != 0; ch = sc.Peek() {
+		for ; whitespace2&(1<<uint(ch)) != 0; ch = sc.Peek() {
 			sc.Next()
-			n++
+			if whitespace1&(1<<uint(ch)) != 0 {
+				// tabs or spaces increases n
+				n++
+			} else if whitespace3&(1<<uint(ch)) != 0 {
+				// newlines reset n
+				n = 0
+			}
 			buf.WriteByte(byte(ch))
 		}
 		if n <= inRule {
