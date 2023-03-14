@@ -1261,6 +1261,9 @@ func (ls *LState) getFieldString(obj LValue, key string) LValue {
 			if !istable {
 				ls.RaiseError("attempt to index a non-table object(%v) with key '%s'", curobj.Type().String(), key)
 			}
+			if curobj == ls.G.Global {
+				ls.RaiseError("attempt to access undeclared global '%s'", key)
+			}
 			return LNil
 		}
 		if metaindex.Type() == LTFunction {
